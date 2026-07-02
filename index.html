@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ClassRadar</title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="ClassRadar" />
+<meta name="theme-color" content="#12141C" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#12141C;
+    --surface:#1B1E29;
+    --surface-2:#232734;
+    --line:#2E3242;
+    --text:#EDEFF7;
+    --muted:#8B90A6;
+    --amber:#E8B339;
+    --amber-dim:#5B4B22;
+    --red:#E2574C;
+    --green:#5FAE7C;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+  #app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* ---- Header ---- */
+  header{
+    padding:20px 18px 14px;
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:5;
+    background:rgba(18,20,28,0.92);
+    backdrop-filter:blur(8px);
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+  }
+  .brand .mark{
+    width:30px;height:30px;border-radius:7px;
+    background:linear-gradient(155deg,var(--amber),#c98f1f);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px; color:#1a1400;
+    flex:none;
+  }
+  .brand h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:19px; font-weight:700; margin:0; letter-spacing:0.2px;
+  }
+  .brand .sub{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; color:var(--muted); margin-top:1px;
+  }
+  .settings-btn{
+    margin-left:auto; background:none; border:1px solid var(--line);
+    color:var(--muted); width:32px;height:32px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center; cursor:pointer;
+    font-size:15px;
+  }
+
+  /* ---- Day strip (signature element) ---- */
+  .strip-wrap{ margin-top:16px; }
+  .strip-label{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.12em; margin-bottom:8px;
+  }
+  .strip{
+    display:flex; gap:0; border:1px dashed var(--line); border-radius:10px; overflow:hidden;
+  }
+  .slot{
+    flex:1; padding:8px 4px; text-align:center; border-right:1px dashed var(--line);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .slot:last-child{border-right:none;}
+  .slot .n{font-size:9px; color:var(--muted);}
+  .slot .dot{
+    width:7px;height:7px;border-radius:50%;margin:5px auto 0;
+    background:var(--line);
+  }
+  .slot.mine .dot{background:var(--amber);}
+  .slot.cancelled .dot{background:var(--red); opacity:0.6;}
+
+  /* ---- Quick actions ---- */
+  .quick{
+    display:flex; gap:8px; padding:14px 18px 4px; flex-wrap:wrap;
+  }
+  .chip{
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+    background:var(--surface); border:1px solid var(--line); color:var(--text);
+    padding:9px 14px; border-radius:20px; cursor:pointer;
+  }
+  .chip:active{background:var(--surface-2);}
+
+  /* ---- Chat area ---- */
+  .chat{
+    flex:1; padding:10px 18px 100px; display:flex; flex-direction:column; gap:14px;
+    overflow-y:auto;
+  }
+  .msg{max-width:88%; line-height:1.5; font-size:14.5px;}
+  .msg.user{
+    align-self:flex-end; background:var(--amber); color:#1a1400;
+    padding:10px 14px; border-radius:14px 14px 3px 14px; font-weight:500;
+  }
+  .msg.bot{
+    align-self:flex-start; background:var(--surface); border:1px solid var(--line);
+    padding:12px 14px; border-radius:14px 14px 14px 3px; white-space:pre-wrap;
+  }
+  .msg.bot.loading{color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:12.5px;}
+  .cal-btn{
+    display:inline-flex; align-items:center; gap:6px; margin-top:10px;
+    background:var(--amber); color:#1a1400; border:none; padding:9px 14px;
+    border-radius:8px; font-weight:600; font-size:13px; cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .empty-state{
+    margin:auto; text-align:center; color:var(--muted); padding:40px 30px;
+  }
+  .empty-state .big{font-family:'Space Grotesk',sans-serif; font-size:16px; color:var(--text); margin-bottom:6px;}
+  .empty-state .small{font-size:13px; line-height:1.5;}
+
+  /* ---- Input bar ---- */
+  .inputbar{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:480px; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg, var(--bg) 60%, rgba(18,20,28,0));
+    display:flex; gap:8px;
+  }
+  .inputbar input{
+    flex:1; background:var(--surface); border:1px solid var(--line); color:var(--text);
+    padding:12px 14px; border-radius:22px; font-size:14.5px; font-family:'Inter',sans-serif;
+    outline:none;
+  }
+  .inputbar input:focus{border-color:var(--amber);}
+  .inputbar button{
+    width:44px;height:44px;border-radius:50%; border:none; background:var(--amber);
+    color:#1a1400; font-size:17px; cursor:pointer; flex:none;
+  }
+  .inputbar button:disabled{opacity:0.4;}
+
+  /* ---- Setup screen ---- */
+  .setup{ padding:24px 20px 40px; }
+  .setup h2{font-family:'Space Grotesk',sans-serif; font-size:20px; margin:4px 0 4px;}
+  .setup p.desc{color:var(--muted); font-size:13.5px; line-height:1.5; margin-bottom:22px;}
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;
+  }
+  .field input{
+    width:100%; background:var(--surface); border:1px solid var(--line); color:var(--text);
+    padding:11px 12px; border-radius:9px; font-size:14px; font-family:'Inter',sans-serif; outline:none;
+  }
+  .field input:focus{border-color:var(--amber);}
+  .field .hint{font-size:11.5px; color:var(--muted); margin-top:5px; line-height:1.4;}
+  .course-row{display:flex; gap:8px; margin-bottom:8px;}
+  .course-row input{flex:1;}
+  .course-row input.sec{max-width:70px; text-align:center;}
+  .remove-course{background:none; border:none; color:var(--red); font-size:18px; cursor:pointer; width:30px;}
+  .add-course{
+    background:none; border:1px dashed var(--line); color:var(--muted); width:100%;
+    padding:9px; border-radius:9px; font-size:13px; cursor:pointer; margin-top:2px; font-family:'Inter',sans-serif;
+  }
+  .save-btn{
+    width:100%; background:var(--amber); color:#1a1400; border:none; padding:14px;
+    border-radius:11px; font-weight:700; font-size:15px; margin-top:20px; cursor:pointer;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .error-box{
+    background:rgba(226,87,76,0.1); border:1px solid var(--red); color:#f0a49e;
+    padding:10px 12px; border-radius:8px; font-size:13px; margin-top:12px;
+  }
+  a{color:var(--amber);}
+
+  .signin-banner{
+    margin:14px 18px 0; padding:12px 14px; background:var(--surface);
+    border:1px solid var(--amber); border-radius:10px;
+    display:flex; align-items:center; gap:10px; font-size:13px;
+  }
+  .signin-banner span{flex:1; color:var(--text);}
+  .gsi-btn{
+    background:var(--amber); color:#1a1400; border:none; padding:8px 12px;
+    border-radius:7px; font-weight:600; font-size:12.5px; cursor:pointer; flex:none;
+    font-family:'Inter',sans-serif;
+  }
+  .g-btn-large{
+    width:100%; background:var(--amber); color:#1a1400; border:none; padding:14px;
+    border-radius:11px; font-weight:700; font-size:15px; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; gap:8px; font-family:'Space Grotesk',sans-serif;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const SESSION_LABELS = ["Session 1","Session 2","Session 3","Session 4","Session 5","Session 6"];
+const SESSION_START_TIMES = {
+  "Session 1":[9,0], "Session 2":[10,45], "Session 3":[12,30],
+  "Session 4":[15,0], "Session 5":[16,45], "Session 6":[18,45]
+};
+const DEFAULT_LEAD_MINUTES = 15;
+
+let CONFIG = null;
+let messages = [];
+let tokenClient = null;
+let ACCESS_TOKEN = null;
+let TOKEN_EXPIRES_AT = 0;
+
+const app = document.getElementById('app');
+
+// ---------------- Google Auth ----------------
+const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
+
+function initTokenClient(clientId){
+  return new Promise((resolve, reject)=>{
+    if(!window.google || !window.google.accounts){
+      reject(new Error("Google sign-in script hasn't loaded yet. Check your connection and reload."));
+      return;
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: SHEETS_SCOPE,
+      callback: () => {} // overridden per-call below
+    });
+    resolve(tokenClient);
+  });
+}
+
+function requestToken(promptMode){
+  return new Promise((resolve, reject)=>{
+    if(!tokenClient){ reject(new Error("Sign-in isn't set up yet.")); return; }
+    tokenClient.callback = (resp)=>{
+      if(resp.error){ reject(new Error(resp.error)); return; }
+      ACCESS_TOKEN = resp.access_token;
+      TOKEN_EXPIRES_AT = Date.now() + (resp.expires_in*1000 - 60000);
+      resolve(ACCESS_TOKEN);
+    };
+    tokenClient.requestAccessToken({ prompt: promptMode });
+  });
+}
+
+function isAuthed(){
+  return !!ACCESS_TOKEN && Date.now() < TOKEN_EXPIRES_AT;
+}
+
+// Ensures a valid access token. When interactive=true, falls back to an
+// interactive Google popup (must be called from a click handler). When
+// interactive=false, only attempts a silent/background refresh and throws
+// an AuthRequiredError if that isn't possible.
+async function ensureAuth(interactive){
+  if(isAuthed()) return ACCESS_TOKEN;
+  try{
+    return await requestToken('');
+  }catch(e){
+    if(!interactive){
+      const err = new Error("Sign-in required");
+      err.name = "AuthRequiredError";
+      throw err;
+    }
+    return await requestToken('consent');
+  }
+}
+
+// ---------------- Storage ----------------
+async function loadConfig(){
+  try{
+    const res = await window.storage.get('config');
+    return res ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+async function saveConfig(cfg){
+  await window.storage.set('config', JSON.stringify(cfg));
+}
+
+// ---------------- Sheets ----------------
+function cellTextWithStrike(cell){
+  const text = cell.formattedValue || "";
+  if(!text) return "";
+  const runs = cell.textFormatRuns;
+  if(!runs){
+    const struck = cell.userEnteredFormat && cell.userEnteredFormat.textFormat && cell.userEnteredFormat.textFormat.strikethrough;
+    return struck ? `~~${text}~~` : text;
+  }
+  let out = "";
+  for(let i=0;i<runs.length;i++){
+    const start = runs[i].startIndex || 0;
+    const end = i+1<runs.length ? runs[i+1].startIndex : text.length;
+    const seg = text.slice(start,end);
+    const struck = runs[i].format && runs[i].format.strikethrough;
+    out += struck ? `~~${seg}~~` : seg;
+  }
+  return out;
+}
+
+async function fetchGrid(interactive){
+  const token = await ensureAuth(!!interactive);
+  const range = `${encodeURIComponent(CONFIG.tabName)}!A1:I200`;
+  const fields = encodeURIComponent("sheets(data(rowData(values(formattedValue,textFormatRuns,userEnteredFormat.textFormat.strikethrough))))");
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.spreadsheetId}?ranges=${range}&fields=${fields}`;
+  let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if(res.status === 401){
+    // token expired/invalid mid-session - try a silent refresh and retry once
+    ACCESS_TOKEN = null;
+    const freshToken = await ensureAuth(!!interactive);
+    res = await fetch(url, { headers: { Authorization: `Bearer ${freshToken}` } });
+  }
+  if(!res.ok){
+    const errBody = await res.text();
+    throw new Error(`Sheets API error (${res.status}): ${errBody.slice(0,200)}`);
+  }
+  const data = await res.json();
+  const rowData = data.sheets[0].data[0].rowData || [];
+  return rowData.map(r => (r.values||[]).map(cellTextWithStrike));
+}
+
+function rowToDayText(row){
+  const dateStr = row[1] || "?";
+  const dayStr = row[2] || "?";
+  let lines = [`Date: ${dateStr} (${dayStr})`];
+  SESSION_LABELS.forEach((label,i)=>{
+    const col = 3+i;
+    let cell = row[col] || "---";
+    cell = cell.trim ? cell.trim() : cell;
+    lines.push(`  ${label}: ${cell || "---"}`);
+  });
+  return lines.join("\n");
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString('en-GB',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+}
+
+async function getWindowText(daysBack, daysForward){
+  const grid = await fetchGrid();
+  const today = new Date();
+  const targets = [];
+  for(let i=-daysBack;i<=daysForward;i++){
+    const d = new Date(today); d.setDate(d.getDate()+i);
+    targets.push(d);
+  }
+  const blocks = [];
+  for(const row of grid.slice(3)){
+    if(!row || !row.some(c=>c)) continue;
+    const dateCell = (row[1]||"").trim();
+    if(!/^\d+$/.test(dateCell)) continue;
+    const dayNum = parseInt(dateCell,10);
+    for(const td of targets){
+      if(td.getDate()===dayNum){
+        blocks.push(`[${fmtDate(td)}]\n${rowToDayText(row)}`);
+      }
+    }
+  }
+  return blocks.length ? blocks.join("\n\n") : "No matching rows found for the requested dates.";
+}
+
+// ---------------- Claude ----------------
+function coursesDesc(){
+  return CONFIG.courses.map(c => c.section ? `- ${c.code}: section ${c.section}` : `- ${c.code}: no sections (applies to all)`).join("\n");
+}
+
+const QA_SYSTEM = `You are a helpful assistant for an MBA student, answering questions about their class timetable.
+
+You will be given:
+1. The student's enrolled courses and their section for each (course code -> section letter, or "no sections" if the course isn't split into sections).
+2. Raw timetable rows extracted from a Google Sheet. Each day has up to 6 sessions. A session cell may contain multiple classes separated by "/", because different sections run in parallel in the same slot. Text wrapped in ~~double tildes~~ means that specific class is CANCELLED / struck through in the sheet and should be excluded from your answer (mention it was cancelled only if the user asks about that specific slot or day in general).
+
+Rules:
+- Only include classes that match the student's course list AND section (or courses with no section, which apply to everyone).
+- A cell entry like "CB (B) - S1 (CR-8B-18)" means: course "CB", section "B", session number "S1", room "CR-8B-18". Match course code and section against the student's list.
+- Never include another section's class unless the student explicitly asks about a different section.
+- Be concise and natural, like a helpful assistant texting a friend - not a data dump.
+- If asked "how many classes", give a number and then a short list.
+- If there are no matching classes for the day, say so plainly (e.g. "You're free today!").
+- Always mention timing/session number and room when listing a class.
+- If you cannot determine something from the given data, say you don't have that data rather than guessing.`;
+
+async function askClaude(question, timetableText){
+  const extra = `Today's date is ${fmtDate(new Date())}.`;
+  const userContent = `My enrolled courses and sections:\n${coursesDesc()}\n\nTimetable data:\n${timetableText}\n\n${extra}\n\nMy question: ${question}`;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model:"claude-sonnet-4-6",
+      max_tokens:1000,
+      system: QA_SYSTEM,
+      messages:[{role:"user", content:userContent}]
+    })
+  });
+  const data = await res.json();
+  return (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+}
+
+const REMINDER_SYSTEM = `You extract structured reminder requests for an MBA student's class timetable app.
+
+Given the student's courses/sections, timetable data, today's date, and a free-text reminder request, output ONLY a JSON object (no markdown fences, no prose) with this exact shape:
+
+{
+  "found": true or false,
+  "date": "YYYY-MM-DD",
+  "session_label": "Session 1" | "Session 2" | ... | "Session 6",
+  "course": "course code as in the sheet",
+  "room": "room code or empty string",
+  "lead_minutes": integer minutes before class to send the reminder (default 15 if unspecified),
+  "human_description": "short natural description, e.g. 'Financial Derivatives (FD) - Session 3'",
+  "clarification_needed": "empty string, or a short question to ask the user if ambiguous"
+}
+
+Only match classes belonging to the student's own section (or section-less courses). If nothing matches, set found=false and explain in clarification_needed. Ignore ~~struck through~~ (cancelled) classes - never set a reminder for a cancelled class; if the request matches only a cancelled class, set found=false and say it's cancelled in clarification_needed.`;
+
+async function extractReminder(question, timetableText){
+  const todayISO = new Date().toISOString().slice(0,10);
+  const userContent = `Today's date: ${todayISO}\n\nMy enrolled courses and sections:\n${coursesDesc()}\n\nTimetable data:\n${timetableText}\n\nMy reminder request: ${question}`;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model:"claude-sonnet-4-6",
+      max_tokens:500,
+      system: REMINDER_SYSTEM,
+      messages:[{role:"user", content:userContent}]
+    })
+  });
+  const data = await res.json();
+  let text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
+  if(text.startsWith("```")){
+    text = text.replace(/```json|```/g,"").trim();
+  }
+  return JSON.parse(text);
+}
+
+// ---------------- Calendar link ----------------
+function pad(n){ return n.toString().padStart(2,"0"); }
+function toGCalStamp(d){
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+}
+function buildCalendarLink(result){
+  const [y,m,d] = result.date.split("-").map(Number);
+  const [h,min] = SESSION_START_TIMES[result.session_label];
+  const classTime = new Date(y, m-1, d, h, min);
+  const lead = result.lead_minutes || DEFAULT_LEAD_MINUTES;
+  const remindAt = new Date(classTime.getTime() - lead*60000);
+  const endAt = new Date(remindAt.getTime() + 5*60000);
+  const title = `⏰ ${result.human_description} in ${lead} min${result.room ? " — Room "+result.room : ""}`;
+  const details = `Auto-generated reminder from ClassRadar. Class starts at ${classTime.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}.`;
+  const params = new URLSearchParams({
+    action:"TEMPLATE",
+    text:title,
+    dates:`${toGCalStamp(remindAt)}/${toGCalStamp(endAt)}`,
+    details
+  });
+  return { url:`https://calendar.google.com/calendar/render?${params.toString()}`, remindAt, classTime };
+}
+
+// ---------------- UI: Setup screen ----------------
+function renderSetup(existing){
+  const cfg = existing || { spreadsheetId:"", clientId:"", tabName:"Term-IV", courses:[
+    {code:"BM", section:"A"}, {code:"DSDT", section:"A"}, {code:"FD", section:"A"},
+    {code:"MSAIC", section:"B"}, {code:"PA", section:"A"}, {code:"SCM", section:"B"},
+    {code:"TS:ADR", section:""}
+  ]};
+
+  app.innerHTML = `
+    <div class="setup">
+      <div class="brand" style="margin-bottom:18px;">
+        <div class="mark">CR</div>
+        <div><h1>ClassRadar</h1><div class="sub">setup</div></div>
+      </div>
+      <h2>Connect your timetable</h2>
+      <p class="desc">Point this at your Google Sheet. You'll sign in with the Google account that already has access — the sheet stays private.</p>
+
+      <div class="field">
+        <label>Spreadsheet ID</label>
+        <input id="f-sheetid" value="${cfg.spreadsheetId}" placeholder="the long ID in your sheet's URL" />
+        <div class="hint">From the URL: docs.google.com/spreadsheets/d/<b>THIS_PART</b>/edit</div>
+      </div>
+      <div class="field">
+        <label>Tab name</label>
+        <input id="f-tab" value="${cfg.tabName}" placeholder="e.g. Term-IV" />
+        <div class="hint">Exact name of the tab at the bottom of the sheet. Update this each new term.</div>
+      </div>
+      <div class="field">
+        <label>Google OAuth Client ID</label>
+        <input id="f-clientid" value="${cfg.clientId}" placeholder="xxxx.apps.googleusercontent.com" />
+        <div class="hint">Google Cloud Console → OAuth consent screen + Credentials → Create OAuth Client ID (Web application). See the setup guide for exact steps.</div>
+      </div>
+
+      <div class="field">
+        <label>Your courses & sections</label>
+        <div id="course-list"></div>
+        <button class="add-course" id="add-course">+ Add course</button>
+        <div class="hint">Leave section blank for courses that aren't split (e.g. shared electives).</div>
+      </div>
+
+      <div id="setup-error"></div>
+      <button class="g-btn-large" id="save-btn">Sign in with Google & continue</button>
+    </div>
+  `;
+
+  const list = document.getElementById('course-list');
+  function renderCourseRows(){
+    list.innerHTML = "";
+    cfg.courses.forEach((c,i)=>{
+      const row = document.createElement('div');
+      row.className = "course-row";
+      row.innerHTML = `
+        <input value="${c.code}" placeholder="Course code" data-idx="${i}" data-f="code" />
+        <input class="sec" value="${c.section||''}" placeholder="Sec" data-idx="${i}" data-f="section" />
+        <button class="remove-course" data-idx="${i}">×</button>
+      `;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const idx = +e.target.dataset.idx, f = e.target.dataset.f;
+        cfg.courses[idx][f] = e.target.value;
+      });
+    });
+    list.querySelectorAll('.remove-course').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        cfg.courses.splice(+e.target.dataset.idx,1);
+        renderCourseRows();
+      });
+    });
+  }
+  renderCourseRows();
+
+  document.getElementById('add-course').addEventListener('click', ()=>{
+    cfg.courses.push({code:"", section:""});
+    renderCourseRows();
+  });
+
+  document.getElementById('save-btn').addEventListener('click', async ()=>{
+    cfg.spreadsheetId = document.getElementById('f-sheetid').value.trim();
+    cfg.tabName = document.getElementById('f-tab').value.trim();
+    cfg.clientId = document.getElementById('f-clientid').value.trim();
+    const errBox = document.getElementById('setup-error');
+    errBox.innerHTML = "";
+    if(!cfg.spreadsheetId || !cfg.tabName || !cfg.clientId){
+      errBox.innerHTML = `<div class="error-box">Please fill in the spreadsheet ID, tab name, and OAuth client ID.</div>`;
+      return;
+    }
+    const btn = document.getElementById('save-btn');
+    btn.textContent = "Opening Google sign-in...";
+    btn.disabled = true;
+    try{
+      CONFIG = cfg;
+      ACCESS_TOKEN = null;
+      await initTokenClient(cfg.clientId);
+      await fetchGrid(true); // triggers sign-in popup + tests sheet access
+      await saveConfig(cfg);
+      renderMain();
+    }catch(e){
+      errBox.innerHTML = `<div class="error-box">Couldn't connect: ${e.message}</div>`;
+      btn.textContent = "Sign in with Google & continue";
+      btn.disabled = false;
+    }
+  });
+}
+
+// ---------------- UI: Main screen ----------------
+function renderMain(){
+  app.innerHTML = `
+    <header>
+      <div class="brand">
+        <div class="mark">CR</div>
+        <div><h1>ClassRadar</h1><div class="sub" id="today-sub"></div></div>
+        <button class="settings-btn" id="settings-btn">⚙</button>
+      </div>
+      <div class="strip-wrap">
+        <div class="strip-label">Today</div>
+        <div class="strip" id="strip"></div>
+      </div>
+    </header>
+    <div id="signin-banner"></div>
+    <div class="quick">
+      <button class="chip" data-q="What classes do I have today?">Today</button>
+      <button class="chip" data-q="What classes do I have tomorrow?">Tomorrow</button>
+      <button class="chip" data-q="What classes do I have this coming week?">This week</button>
+    </div>
+    <div class="chat" id="chat">
+      <div class="empty-state">
+        <div class="big">Ask me anything</div>
+        <div class="small">"How many classes today?"<br/>"When's my FD class this week?"<br/>"Remind me 20 min before my next PA class"</div>
+      </div>
+    </div>
+    <div class="inputbar">
+      <input id="q-input" type="text" placeholder="Ask about your timetable..." />
+      <button id="send-btn">➤</button>
+    </div>
+  `;
+  document.getElementById('today-sub').textContent = fmtDate(new Date());
+  document.getElementById('settings-btn').addEventListener('click', ()=> renderSetup(CONFIG));
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=> handleQuestion(chip.dataset.q));
+  });
+  document.getElementById('send-btn').addEventListener('click', sendFromInput);
+  document.getElementById('q-input').addEventListener('keydown', e=>{
+    if(e.key==="Enter") sendFromInput();
+  });
+  loadStrip();
+}
+
+function sendFromInput(){
+  const inp = document.getElementById('q-input');
+  const val = inp.value.trim();
+  if(!val) return;
+  inp.value = "";
+  handleQuestion(val);
+}
+
+function showSignInBanner(onSuccess){
+  const box = document.getElementById('signin-banner');
+  box.innerHTML = `
+    <div class="signin-banner">
+      <span>Sign in to load your timetable</span>
+      <button class="gsi-btn" id="signin-inline-btn">Sign in</button>
+    </div>
+  `;
+  document.getElementById('signin-inline-btn').addEventListener('click', async ()=>{
+    const b = document.getElementById('signin-inline-btn');
+    b.textContent = "..."; b.disabled = true;
+    try{
+      await ensureAuth(true);
+      box.innerHTML = "";
+      if(onSuccess) onSuccess();
+    }catch(e){
+      b.textContent = "Sign in"; b.disabled = false;
+    }
+  });
+}
+
+async function loadStrip(){
+  const strip = document.getElementById('strip');
+  strip.innerHTML = SESSION_LABELS.map((_,i)=>`<div class="slot"><div class="n">S${i+1}</div><div class="dot"></div></div>`).join("");
+  try{
+    const text = await getWindowText(0,0);
+    const answer = await askClaude(
+      "For each of Session 1 through Session 6 today, tell me only, on its own line, in this exact format and nothing else: 'S<number>: MINE' if I have a class in that slot, 'S<number>: CANCELLED' if my class in that slot is cancelled, or 'S<number>: FREE' if I have no class. Output exactly 6 lines, nothing else.",
+      text
+    );
+    const lines = answer.split("\n").map(l=>l.trim()).filter(Boolean);
+    const slots = document.querySelectorAll('.slot');
+    lines.forEach(line=>{
+      const m = line.match(/S(\d):\s*(MINE|CANCELLED|FREE)/i);
+      if(!m) return;
+      const idx = parseInt(m[1],10)-1;
+      const status = m[2].toUpperCase();
+      if(slots[idx]){
+        if(status==="MINE") slots[idx].classList.add("mine");
+        if(status==="CANCELLED") slots[idx].classList.add("cancelled");
+      }
+    });
+  }catch(e){
+    if(e.name === "AuthRequiredError"){
+      strip.innerHTML = `<div style="padding:8px 10px;color:var(--muted);font-size:12px;">Sign in to see today's classes</div>`;
+      showSignInBanner(loadStrip);
+    } else {
+      strip.innerHTML = `<div style="padding:8px 10px;color:var(--muted);font-size:12px;">Couldn't load strip: ${e.message}</div>`;
+    }
+  }
+}
+
+function appendMsg(role, content){
+  const chat = document.getElementById('chat');
+  const empty = chat.querySelector('.empty-state');
+  if(empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.textContent = content;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+const REMINDER_KEYWORDS = ["remind","reminder","alert me","notify me"];
+
+async function handleQuestion(question){
+  appendMsg('user', question);
+  const loadingDiv = appendMsg('bot loading', "reading the timetable...");
+
+  const isReminder = REMINDER_KEYWORDS.some(k => question.toLowerCase().includes(k));
+
+  try{
+    const text = await getWindowText(1,8);
+    if(isReminder){
+      const result = await extractReminder(question, text);
+      loadingDiv.remove();
+      if(!result.found){
+        appendMsg('bot', result.clarification_needed || "I couldn't find a matching class for that.");
+        return;
+      }
+      const { url, remindAt, classTime } = buildCalendarLink(result);
+      const botDiv = appendMsg('bot',
+        `Got it — ${result.human_description} starts at ${classTime.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}${result.room ? " in "+result.room : ""}.\n\nTap below to add a reminder to your calendar for ${remindAt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}:`
+      );
+      const btn = document.createElement('button');
+      btn.className = "cal-btn";
+      btn.textContent = "📅 Add reminder to calendar";
+      btn.addEventListener('click', ()=> window.open(url, '_blank'));
+      botDiv.appendChild(document.createElement('br'));
+      botDiv.appendChild(btn);
+    } else {
+      const answer = await askClaude(question, text);
+      loadingDiv.remove();
+      appendMsg('bot', answer);
+    }
+  }catch(e){
+    loadingDiv.remove();
+    if(e.name === "AuthRequiredError"){
+      appendMsg('bot', "You've been signed out — tap sign in below, then ask again.");
+      showSignInBanner();
+    } else {
+      appendMsg('bot', `Something went wrong: ${e.message}`);
+    }
+  }
+}
+
+// ---------------- Boot ----------------
+(async function boot(){
+  const cfg = await loadConfig();
+  if(cfg && cfg.spreadsheetId && cfg.clientId){
+    CONFIG = cfg;
+    try{
+      await initTokenClient(cfg.clientId);
+    }catch(e){ /* GIS script may still be loading; handled on first fetch */ }
+    renderMain();
+  } else {
+    renderSetup(cfg);
+  }
+})();
+</script>
+</body>
+</html>
